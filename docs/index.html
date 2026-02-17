@@ -1,14 +1,23 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Access クエリエクスポーター</title>
     <meta name="description" content="Accessデータベースのテーブル構造をブラウザ上で可視化するWebアプリ">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         :root {
             --bg-primary: #0a0e1a;
@@ -185,9 +194,20 @@
         }
 
         @keyframes progress-indeterminate {
-            0% { width: 0%; margin-left: 0; }
-            50% { width: 60%; margin-left: 20%; }
-            100% { width: 0%; margin-left: 100%; }
+            0% {
+                width: 0%;
+                margin-left: 0;
+            }
+
+            50% {
+                width: 60%;
+                margin-left: 20%;
+            }
+
+            100% {
+                width: 0%;
+                margin-left: 100%;
+            }
         }
 
         .progress-text {
@@ -209,7 +229,9 @@
             font-size: 0.9rem;
         }
 
-        .error-msg.active { display: block; }
+        .error-msg.active {
+            display: block;
+        }
 
         /* Results */
         .results {
@@ -217,7 +239,9 @@
             margin-top: 2rem;
         }
 
-        .results.active { display: block; }
+        .results.active {
+            display: block;
+        }
 
         /* Results Header */
         .results-header {
@@ -286,7 +310,9 @@
             border-color: var(--accent-light);
         }
 
-        .btn .icon { font-size: 1rem; }
+        .btn .icon {
+            font-size: 1rem;
+        }
 
         /* Stats Row */
         .stats-row {
@@ -347,7 +373,9 @@
             font-family: inherit;
         }
 
-        .tab:hover { color: var(--text-secondary); }
+        .tab:hover {
+            color: var(--text-secondary);
+        }
 
         .tab.active {
             color: var(--accent-light);
@@ -369,8 +397,13 @@
             margin-left: 0.4rem;
         }
 
-        .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
 
         /* Tables Panel */
         .table-grid {
@@ -401,7 +434,9 @@
             gap: 0.5rem;
         }
 
-        .table-card-name .icon { font-size: 1.1rem; }
+        .table-card-name .icon {
+            font-size: 1.1rem;
+        }
 
         .table-card-fields {
             display: flex;
@@ -487,33 +522,79 @@
         }
 
         /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
 
         /* Responsive */
         @media (max-width: 640px) {
-            .container { padding: 1rem; }
-            .header h1 { font-size: 1.5rem; }
-            .upload-zone { padding: 2rem 1.5rem; }
-            .stats-row { grid-template-columns: repeat(2, 1fr); }
-            .results-header { flex-direction: column; align-items: flex-start; }
+            .container {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .upload-zone {
+                padding: 2rem 1.5rem;
+            }
+
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
 
         /* Fade in animation */
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(16px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .fade-in {
             animation: fadeInUp 0.4s ease forwards;
         }
 
-        .fade-in-delay-1 { animation-delay: 0.1s; opacity: 0; }
-        .fade-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
-        .fade-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
+        .fade-in-delay-1 {
+            animation-delay: 0.1s;
+            opacity: 0;
+        }
+
+        .fade-in-delay-2 {
+            animation-delay: 0.2s;
+            opacity: 0;
+        }
+
+        .fade-in-delay-3 {
+            animation-delay: 0.3s;
+            opacity: 0;
+        }
 
         /* Footer */
         .footer {
@@ -530,9 +611,12 @@
             text-decoration: none;
         }
 
-        .footer a:hover { text-decoration: underline; }
+        .footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <!-- Header -->
@@ -552,7 +636,9 @@
 
         <!-- Progress -->
         <div class="progress-bar" id="progressBar">
-            <div class="progress-track"><div class="progress-fill"></div></div>
+            <div class="progress-track">
+                <div class="progress-fill"></div>
+            </div>
             <div class="progress-text">解析中...</div>
         </div>
 
@@ -610,7 +696,9 @@
             <p>Access クエリエクスポーター — ブラウザ上で完結するデータベース構造ビューア</p>
             <p style="margin-top: 0.35rem;">
                 <a href="https://github.com/kishimen1/msAccessQueryExporter" target="_blank">GitHub</a>
-                ・クエリ SQL の完全エクスポートには <a href="https://github.com/kishimen1/msAccessQueryExporter#%EF%B8%8F-%E3%83%AD%E3%83%BC%E3%82%AB%E3%83%AB%E7%89%88python--windows%E5%B0%82%E7%94%A8" target="_blank">ローカル版</a> をご利用ください
+                ・クエリ SQL の完全エクスポートには <a
+                    href="https://github.com/kishimen1/msAccessQueryExporter#%EF%B8%8F-%E3%83%AD%E3%83%BC%E3%82%AB%E3%83%AB%E7%89%88python--windows%E5%B0%82%E7%94%A8"
+                    target="_blank">ローカル版</a> をご利用ください
             </p>
         </footer>
     </div>
@@ -620,7 +708,7 @@
 
     <!-- mdb-reader from CDN (ESM) -->
     <script type="module">
-        import MDBReader from 'https://cdn.jsdelivr.net/npm/mdb-reader@3/dist/mdb-reader.esm.mjs';
+        import MDBReader from 'https://cdn.jsdelivr.net/npm/mdb-reader/+esm';
 
         let currentData = null;
 
@@ -685,7 +773,7 @@
                 }
 
                 const now = new Date();
-                const exportedAt = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+                const exportedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
                 currentData = {
                     filename: file.name,
@@ -724,7 +812,7 @@
         }
 
         // Make resetApp global
-        window.resetApp = function() {
+        window.resetApp = function () {
             currentData = null;
             results.classList.remove('active');
             uploadZone.style.display = '';
@@ -788,7 +876,7 @@
         });
 
         // ===== Download =====
-        window.downloadAll = function() {
+        window.downloadAll = function () {
             if (!currentData) return;
 
             const lines = [];
@@ -837,4 +925,5 @@
         }
     </script>
 </body>
+
 </html>
