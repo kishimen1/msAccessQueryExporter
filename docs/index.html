@@ -708,6 +708,7 @@
 
     <!-- mdb-reader from CDN (ESM) -->
     <script type="module">
+        import { Buffer } from 'https://cdn.jsdelivr.net/npm/buffer@6/+esm';
         import MDBReader from 'https://cdn.jsdelivr.net/npm/mdb-reader/+esm';
 
         let currentData = null;
@@ -753,7 +754,7 @@
 
             try {
                 const arrayBuffer = await file.arrayBuffer();
-                const buffer = new Uint8Array(arrayBuffer);
+                const buffer = Buffer.from(new Uint8Array(arrayBuffer));
                 const reader = new MDBReader(buffer);
 
                 const tableNames = reader.getTableNames();
