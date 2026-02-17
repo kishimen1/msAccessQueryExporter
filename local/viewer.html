@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access クエリエクスポーター — ビューア</title>
+    <meta name="description" content="Accessデータベースのクエリ解析結果を表示するオフラインビューア">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-card-hover: rgba(31, 41, 55, 0.8);
+            --border: rgba(99, 102, 241, 0.2);
+            --border-hover: rgba(99, 102, 241, 0.5);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --tag-select: #3b82f6;
+            --tag-update: #f59e0b;
+            --tag-delete: #ef4444;
+            --tag-insert: #22c55e;
+            --tag-cross: #a855f7;
+            --tag-union: #06b6d4;
+            --tag-other: #64748b;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.2s ease;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-light), #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .header .badge {
+            display: inline-block;
+            padding: 0.2rem 0.7rem;
+            border-radius: 20px;
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #86efac;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        /* Load Zone */
+        .load-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            transition: all var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .load-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), transparent);
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .load-zone:hover,
+        .load-zone.dragover {
+            border-color: var(--accent);
+            background: var(--bg-card-hover);
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .load-zone:hover::before,
+        .load-zone.dragover::before {
+            opacity: 1;
+        }
+
+        .load-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .load-zone h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .load-zone p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .load-zone input[type="file"] {
+            display: none;
+        }
+
+        /* Error */
+        .error-msg {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-sm);
+            padding: 1rem 1.25rem;
+            margin-top: 1.5rem;
+            color: #fca5a5;
+            font-size: 0.9rem;
+        }
+
+        .error-msg.active {
+            display: block;
+        }
+
+        /* Results */
+        .results {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .results-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .results-info .filename {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .results-info .meta {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .results-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+
+        .btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+            background: var(--bg-card-hover);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-light);
+        }
+
+        .btn .icon {
+            font-size: 1rem;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            text-align: center;
+            transition: all var(--transition);
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--accent-light);
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.25rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.25rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+
+        .tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .tab.active {
+            color: var(--accent-light);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 10px;
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--accent-light);
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 0.4rem;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Table cards */
+        .table-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            transition: all var(--transition);
+        }
+
+        .table-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .table-card-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .table-card-name .icon {
+            font-size: 1.1rem;
+        }
+
+        .table-card-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .field-tag {
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.12);
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Relations */
+        .relation-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .relation-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            flex-wrap: wrap;
+        }
+
+        .relation-table {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .relation-arrow {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        .relation-fields {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        /* Query cards */
+        .query-filter {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.55rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color var(--transition);
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .query-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .query-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: all var(--transition);
+        }
+
+        .query-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .query-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            gap: 0.75rem;
+        }
+
+        .query-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .query-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .query-type-tag {
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+
+        .query-type-tag.select {
+            background: rgba(59, 130, 246, 0.15);
+            color: #93bbfd;
+        }
+
+        .query-type-tag.update {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+        }
+
+        .query-type-tag.delete {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+        }
+
+        .query-type-tag.insert {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+        }
+
+        .query-type-tag.cross {
+            background: rgba(168, 85, 247, 0.15);
+            color: #c4b5fd;
+        }
+
+        .query-type-tag.union {
+            background: rgba(6, 182, 212, 0.15);
+            color: #67e8f9;
+        }
+
+        .query-type-tag.other {
+            background: rgba(100, 116, 139, 0.15);
+            color: #94a3b8;
+        }
+
+        .query-actions {
+            display: flex;
+            gap: 0.35rem;
+        }
+
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .btn-icon:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .btn-icon.copied {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .query-body {
+            padding: 0;
+        }
+
+        .query-body pre {
+            margin: 0;
+            padding: 1rem 1.25rem;
+            background: transparent !important;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+
+        .query-body code {
+            font-family: 'JetBrains Mono', monospace !important;
+            font-size: 0.82rem;
+            background: transparent !important;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transform: translateY(120%);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .load-zone {
+                padding: 2rem 1.5rem;
+            }
+
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.4s ease forwards;
+        }
+
+        .fade-in-delay-1 {
+            animation-delay: 0.1s;
+            opacity: 0;
+        }
+
+        .fade-in-delay-2 {
+            animation-delay: 0.2s;
+            opacity: 0;
+        }
+
+        .fade-in-delay-3 {
+            animation-delay: 0.3s;
+            opacity: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>⚡ Access クエリエクスポーター <span class="badge">ローカル版</span></h1>
+            <p>JSON 結果ファイルを読み込んで表示</p>
+        </header>
+
+        <!-- Load Zone -->
+        <div class="load-zone" id="loadZone">
+            <span class="load-icon">📂</span>
+            <h2>JSON 結果ファイルをドロップ or クリックして選択</h2>
+            <p>AccessQueryExporter.bat で出力された _result.json ファイルを開いてください</p>
+            <input type="file" id="fileInput" accept=".json">
+        </div>
+
+        <!-- Error -->
+        <div class="error-msg" id="errorMsg"></div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <!-- Results Header -->
+            <div class="results-header fade-in">
+                <div class="results-info">
+                    <span class="filename" id="filename"></span>
+                    <span class="meta" id="exportedAt"></span>
+                </div>
+                <div class="results-actions">
+                    <button class="btn btn-primary" onclick="downloadAll()" title="テキストファイルとしてダウンロード">
+                        <span class="icon">📥</span> 一括ダウンロード
+                    </button>
+                    <button class="btn" onclick="resetApp()" title="別のファイルを読み込む">
+                        <span class="icon">🔄</span> リセット
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-row fade-in fade-in-delay-1">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTables">0</div>
+                    <div class="stat-label">テーブル</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statRelations">0</div>
+                    <div class="stat-label">リレーション</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statQueries">0</div>
+                    <div class="stat-label">クエリ</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs fade-in fade-in-delay-2">
+                <button class="tab active" data-tab="queries">
+                    クエリ / SQL<span class="tab-badge" id="badgeQueries">0</span>
+                </button>
+                <button class="tab" data-tab="tables">
+                    テーブル<span class="tab-badge" id="badgeTables">0</span>
+                </button>
+                <button class="tab" data-tab="relations">
+                    リレーション<span class="tab-badge" id="badgeRelations">0</span>
+                </button>
+            </div>
+
+            <!-- Queries Panel -->
+            <div class="tab-panel active fade-in fade-in-delay-3" id="panel-queries">
+                <div class="query-filter">
+                    <input type="text" class="search-input" id="querySearch" placeholder="🔍 クエリ名で検索...">
+                </div>
+                <div class="query-list" id="queryList"></div>
+            </div>
+
+            <!-- Tables Panel -->
+            <div class="tab-panel" id="panel-tables">
+                <div class="table-grid" id="tableGrid"></div>
+            </div>
+
+            <!-- Relations Panel -->
+            <div class="tab-panel" id="panel-relations">
+                <div class="relation-list" id="relationList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let currentData = null;
+
+        // ===== Load Zone =====
+        const loadZone = document.getElementById('loadZone');
+        const fileInput = document.getElementById('fileInput');
+        const errorMsg = document.getElementById('errorMsg');
+        const results = document.getElementById('results');
+
+        loadZone.addEventListener('click', () => fileInput.click());
+
+        loadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            loadZone.classList.add('dragover');
+        });
+
+        loadZone.addEventListener('dragleave', () => {
+            loadZone.classList.remove('dragover');
+        });
+
+        loadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            loadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) loadJsonFile(files[0]);
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) loadJsonFile(fileInput.files[0]);
+        });
+
+        // ===== Auto-load: find _result.json in same folder =====
+        // When opened from BAT, try to auto-detect and load the JSON via URL params
+        (function autoLoad() {
+            // Check for ?file= parameter (used when opened programmatically)
+            const params = new URLSearchParams(window.location.search);
+            const filePath = params.get('file');
+            if (filePath) {
+                fetch(filePath)
+                    .then(r => r.json())
+                    .then(data => {
+                        currentData = data;
+                        renderResults(data);
+                    })
+                    .catch(() => {
+                        // Silently fail — user can manually load
+                    });
+            }
+        })();
+
+        function loadJsonFile(file) {
+            if (!file.name.endsWith('.json')) {
+                showError('JSON ファイルを選択してください（_result.json）');
+                return;
+            }
+
+            hideError();
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    // Validate structure
+                    if (!data.filename || !Array.isArray(data.tables) || !Array.isArray(data.queries)) {
+                        throw new Error('無効な JSON 形式です。AccessQueryExporter.bat で出力されたファイルを使用してください。');
+                    }
+
+                    currentData = data;
+                    renderResults(data);
+                } catch (err) {
+                    showError(err.message || 'JSON の読み込みに失敗しました。');
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // ===== UI State =====
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.add('active');
+            loadZone.style.display = '';
+        }
+
+        function hideError() {
+            errorMsg.classList.remove('active');
+        }
+
+        function resetApp() {
+            currentData = null;
+            results.classList.remove('active');
+            loadZone.style.display = '';
+            fileInput.value = '';
+            hideError();
+        }
+
+        // ===== Tabs =====
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`panel-${tab.dataset.tab}`).classList.add('active');
+            });
+        });
+
+        // ===== Render =====
+        function renderResults(data) {
+            document.getElementById('filename').textContent = data.filename;
+            document.getElementById('exportedAt').textContent = `解析日時: ${data.exported_at}`;
+
+            document.getElementById('statTables').textContent = data.tables.length;
+            document.getElementById('statRelations').textContent = (data.relationships || []).length;
+            document.getElementById('statQueries').textContent = data.queries.length;
+            document.getElementById('badgeTables').textContent = data.tables.length;
+            document.getElementById('badgeRelations').textContent = (data.relationships || []).length;
+            document.getElementById('badgeQueries').textContent = data.queries.length;
+
+            renderQueries(data.queries);
+            renderTables(data.tables);
+            renderRelations(data.relationships || []);
+
+            loadZone.style.display = 'none';
+            results.classList.add('active');
+        }
+
+        function getTypeClass(type) {
+            if (type.includes('選択')) return 'select';
+            if (type.includes('更新')) return 'update';
+            if (type.includes('削除')) return 'delete';
+            if (type.includes('追加')) return 'insert';
+            if (type.includes('クロス')) return 'cross';
+            if (type.includes('ユニオン')) return 'union';
+            return 'other';
+        }
+
+        function renderQueries(queries) {
+            const list = document.getElementById('queryList');
+
+            if (queries.length === 0) {
+                list.innerHTML = '<div class="empty-state"><span class="icon">📋</span><p>クエリが見つかりませんでした</p></div>';
+                return;
+            }
+
+            list.innerHTML = queries.map((q, i) => `
+                <div class="query-card" data-name="${q.name.toLowerCase()}">
+                    <div class="query-header">
+                        <div class="query-title">
+                            <span class="query-name">${escapeHtml(q.name)}</span>
+                            <span class="query-type-tag ${getTypeClass(q.type)}">${q.type}</span>
+                        </div>
+                        <div class="query-actions">
+                            <button class="btn-icon" onclick="copyQuery(${i})" title="SQLをコピー" id="copyBtn${i}">📋</button>
+                        </div>
+                    </div>
+                    <div class="query-body">
+                        <pre><code class="language-sql">${escapeHtml(q.sql)}</code></pre>
+                    </div>
+                </div>
+            `).join('');
+
+            list.querySelectorAll('pre code').forEach(block => {
+                hljs.highlightElement(block);
+            });
+        }
+
+        function renderTables(tables) {
+            const grid = document.getElementById('tableGrid');
+
+            if (tables.length === 0) {
+                grid.innerHTML = '<div class="empty-state"><span class="icon">📦</span><p>テーブルが見つかりませんでした</p></div>';
+                return;
+            }
+
+            grid.innerHTML = tables.map(t => `
+                <div class="table-card">
+                    <div class="table-card-name">
+                        <span class="icon">📊</span>
+                        ${escapeHtml(t.name)}
+                    </div>
+                    <div class="table-card-fields">
+                        ${t.fields.map(f => `<span class="field-tag">${escapeHtml(f)}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRelations(relations) {
+            const list = document.getElementById('relationList');
+
+            if (relations.length === 0) {
+                list.innerHTML = '<div class="empty-state"><span class="icon">🔗</span><p>リレーションシップが見つかりませんでした</p></div>';
+                return;
+            }
+
+            list.innerHTML = relations.map(r => `
+                <div class="relation-item">
+                    <span class="relation-table">${escapeHtml(r.table)}</span>
+                    <span class="relation-arrow">→</span>
+                    <span class="relation-table">${escapeHtml(r.foreign_table)}</span>
+                    <span class="relation-fields">
+                        ${r.fields.map(f => `${escapeHtml(f.from_field)} = ${escapeHtml(f.to_field)}`).join(', ')}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // ===== Search =====
+        document.getElementById('querySearch').addEventListener('input', (e) => {
+            const keyword = e.target.value.toLowerCase();
+            document.querySelectorAll('.query-card').forEach(card => {
+                const name = card.dataset.name;
+                card.style.display = name.includes(keyword) ? '' : 'none';
+            });
+        });
+
+        // ===== Actions =====
+        function copyQuery(index) {
+            const sql = currentData.queries[index].sql;
+            navigator.clipboard.writeText(sql).then(() => {
+                const btn = document.getElementById(`copyBtn${index}`);
+                btn.classList.add('copied');
+                btn.textContent = '✅';
+                showToast('SQL をコピーしました');
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.textContent = '📋';
+                }, 1500);
+            });
+        }
+
+        function downloadAll() {
+            if (!currentData) return;
+
+            const lines = [];
+            lines.push('='.repeat(50));
+            lines.push(`データベース: ${currentData.filename}`);
+            lines.push(`出力日時: ${currentData.exported_at}`);
+            lines.push('='.repeat(50));
+            lines.push('');
+
+            // Tables
+            lines.push('■■■ テーブル一覧 ■■■');
+            lines.push('');
+            currentData.tables.forEach(t => {
+                lines.push(`  ・${t.name}`);
+                lines.push(`    フィールド: ${t.fields.join(', ')}`);
+            });
+            lines.push('');
+
+            // Relationships
+            lines.push('■■■ リレーションシップ ■■■');
+            lines.push('');
+            (currentData.relationships || []).forEach(r => {
+                const fields = r.fields.map(f => `${f.from_field}=${f.to_field}`).join(', ');
+                lines.push(`  ${r.table} → ${r.foreign_table}  (${fields})`);
+            });
+            lines.push('');
+
+            // Queries
+            lines.push('■■■ クエリ一覧とSQL定義 ■■■');
+            lines.push('');
+            currentData.queries.forEach((q, i) => {
+                lines.push(`【${i + 1}】 ${q.name}  [${q.type}]`);
+                lines.push('-'.repeat(50));
+                lines.push(q.sql);
+                lines.push('');
+                lines.push('');
+            });
+
+            lines.push('='.repeat(50));
+            lines.push(`総クエリ数: ${currentData.queries.length}`);
+            lines.push('='.repeat(50));
+
+            const text = lines.join('\n');
+            const baseName = currentData.filename.replace(/\.(accdb|mdb)$/i, '');
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${baseName}_クエリ一覧.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('ダウンロードを開始しました');
+        }
+
+        // ===== Utils =====
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+
+</html>
